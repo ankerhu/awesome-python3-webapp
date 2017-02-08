@@ -244,17 +244,3 @@ class Model(dict,metaclass=ModelMetaclass):
 		rows=await execute(self.__delete__,args)
 		if rows !=1:
 			logging.warn('faild to remove by primary key: affected rows:%s'%rows)
-
-if __name__ == '__main__':
-	class User(Model):
-		id = IntegerField('id',primary_key=True)
-		name=StringField('username')
-		email=StringField('email')
-		password=StringField('password')
-
-	u1=User(id=111,name='A',email='anker@jj.com',password='password')
-	u2=User(id=222,name='B',email='anker@jj.com',password='password')	
-	print(u1)
-	print(u2)
-	u1.remove()
-	print(u1)

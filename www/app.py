@@ -1,3 +1,9 @@
+#-*- coding:utf-8 -*-
+
+__author__='Ankerhu'
+'''
+async web Application
+'''
 import logging;logging.basicConfig(level=logging.INFO)
 import asyncio,os,json,time
 from datetime import datetime

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #-*- coding:utf-8 -*-
 
 __author__='Ankerhu'
@@ -9,6 +10,11 @@ import logging
 import aiomysql
 def log(sql,args=()):
 	logging.info('SQL:%s'%sql)
+async def destroy_pool():
+	global __pool
+	if __pool is not None:
+		__pool.close()
+		await __pool.wait_closed()
 #创建连接池
 async def create_pool(loop,**kw):
 	logging.info('create database connection pool....')
@@ -16,44 +22,55 @@ async def create_pool(loop,**kw):
 	__pool = await aiomysql.create_pool(
 		host=kw.get('host','localhost'),
 		port=kw.get('port',3306),
-		user=kw['root'],
+		user=kw['user'],
 		password=kw['password'],
-		db=kw['awesome-python3-webapp-connection'],
-		charset=kw.get('charset','utf-8'),
+		db=kw['db'],
+		charset=kw.get('charset','utf8'),
 		autocommit=kw.get('autocommit',True),
 		maxsize=kw.get('maxsize',10),
 		minsize=kw.get('minsize',1),
 		#接收一个event_loop实例
-		loop=loop
+		loop=loop,
 	)
 #封装SQL SELECT语句为select函数
 async def select(sql,args,size=None):
 	log(sql,args)
 	global __pool
-	with (await __pool) as conn:
+	async with __pool.get() as conn:
 		# DictCursor is a cursor which returns results as a dictionary
-		cur = await conn.cursor(aiomysql.DictCursor)
-		await cur.execute(sql.replace('?','%s'),args or ())
-		if size:
-			rs=await cur.fetchmany(size)
-		else:
-			rs=await cur.fetchall()
-		await cur.close()
+		try:
+			async with conn.cursor(aiomysql.DictCursor) as cur:
+				await cur.execute(sql.replace('?','%s'),args or ())
+				if size:
+					rs=await cur.fetchmany(size)
+				else:
+					rs=await cur.fetchall()
+				await cur.close()	
+		except BaseException as e:
+			raise
+		finally:
+			conn.close()
 		logging.info('rows returned:%s' % len(rs))
 		return rs
 #Insert，update，delete语句，操作参数一样，定义一个通用执行函数即可
 #返回操作影响的行号
-async def execute(sql,args):
+async def execute(sql,args,autocommit=True):
 	log(sql)
-	with (await __pool) as conn:
+	async with __pool.get() as conn:
+		if not autocommit:
+			await conn.begin()
 		try:
-			# execute类型的SQL操作返回的结果只有行号，所以不需要用DictCursor
-			cur = await conn.cursor()
-			await cur.execute(sql.replace('?','%s'),args)
-			affected = cur.rowcount
-			await cur.close()
+			async with conn.cursor(aiomysql.DictCursor) as cur:
+				await cur.execute(sql.replace('?', '%s'), args)
+				affected = cur.rowcount
+			if not autocommit:
+				await conn.commit()
 		except BaseException as e:
+			if not autocommit:
+				await conn.rollback()
 			raise
+		finally:
+			conn.close()
 		return affected
 #根据输入的参数生成占位符列表
 def create_args_string(num):

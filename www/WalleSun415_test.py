@@ -1,13 +1,12 @@
-from orm import create_pool, destroy_pool
+from WalleSun415_orm import create_pool, destroy_pool
 import asyncio
 from model import User
 import logging
 
 async def test1(loop):
     await create_pool(loop=loop, host='localhost', port=3306, user='www-data', password='www-data', db='awesome')
-    # u = User(name='Test19', email='test19@example.com', passwd='123456',
-    #         image='about:blank')
-    # await u.save()
+    u = User(name='Test19', email='test19@example.com', passwd='123456',image='about:blank')
+    await u.save()
 
     # 测试count rows语句
     rows = await User.countRows()

@@ -163,9 +163,11 @@ class ModelMetaclass(type):
 		attrs['__fields__']=fields
 		#构造默认的SELECT，INSERT，UPDATE和DELETE语句
 		# ``反引号功能同repr()
-		attrs['__select__']='select `%s`,%s from `%s`'%(primaryKey,','.join(escaped_fields),tableName)
-		attrs['__insert__']='insert into `%s` (%s,`%s`) values (%s)'%(tableName,','.join(escaped_fields),primaryKey,create_args_string(len(escaped_fields)+1))
-		attrs['__update__']='update `%s` set %s where `%s`=?'%(tableName,','.join(map(lambda f:'`%s`=?'%(mappings.get(f).name or f),fields)),primaryKey)
+		attrs['__select__']='select `%s`,%s from `%s`'%(primaryKey,', '.join(escaped_fields), tableName)
+		#attrs['__insert__']='insert into `%s` (%s,`%s`) values (%s)'%(tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
+		attrs['__insert__'] = 'insert into `%s` (%s) values (%s)' % (tableName, ', '.join('`%s`' % f for f in mappings), ', '.join('?' * len(mappings)))
+
+		attrs['__update__']='update `%s` set %s where `%s`=?'%(tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
 		attrs['__delete__']='delete from `%s` where `%s`=?'%(tableName,primaryKey)
 		return type.__new__(cls,name,bases,attrs)
 
